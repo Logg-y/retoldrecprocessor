@@ -160,3 +160,8 @@ cython_debug/
 #.idea/
 
 _recprocessor.log
+*.json
+*.mythrec
+*.decompressed
+/recprocessor.dist/
+recprocessor.dist.zip
