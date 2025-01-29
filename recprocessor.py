@@ -17,12 +17,14 @@ ILLEGAL_FILENAME_CHARACTERS = "/\\<>:|?\""
 
 def decompressl33tZlib(stream: typing.BinaryIO, maxSize=0) -> typing.BinaryIO:
     "Decompress up to maxSize bytes of a l33t-zlib compressed file, returning a file-like object of decompressed data"
+    stream.seek(0x10d)
+    compressedLength = struct.unpack("<i", stream.read(4))[0]
     header = stream.read(4)
     if header != b"l33t":
         raise ValueError(f"Bad l33t-zlib header: {header.decode(errors='replace')}")
     decompress = zlib.decompressobj()
     origDataLength = struct.unpack("<i", stream.read(4))[0]
-    return io.BytesIO(decompress.decompress(stream.read(), maxSize))
+    return io.BytesIO(decompress.decompress(stream.read(compressedLength), maxSize))
 
 def readInt32(stream: typing.BinaryIO) -> int:
     return struct.unpack("<i", stream.read(4))[0]
@@ -149,11 +151,10 @@ class HierarchyCollection:
         return matching
     
 def tryParsingHierarchy(stream: typing.BinaryIO) -> HierarchyCollection:
-    stream.seek(0x101)
     if stream.read(2) != b"BG":
         raise ValueError("Missing BG top level container")
-    stream.seek(0x101)
-    collection = HierarchyCollection(stream, "BG")
+    stream.seek(stream.tell()-2)
+    collection = HierarchyCollection(stream, twoLetterCode="BG")
     return collection
 
 def parseMetadata(hierarchy: HierarchyCollection) -> typing.Dict[str, typing.Any]:
@@ -362,11 +363,13 @@ def processFile(filepath: str):
     global config
     with open(filepath, "rb") as f:
         decompressed = decompressl33tZlib(f, RECORDED_GAME_MAX_DECOMPRESS_SIZE)
-    hierarchy = tryParsingHierarchy(decompressed)
+    
     if config.getboolean("development", "OutputDecompressed", fallback=False):
+        decompressed.seek(0)
         with open(filepath + ".decompressed", "wb") as f:
             f.write(decompressed.read())
         decompressed.seek(0)
+    hierarchy = tryParsingHierarchy(decompressed)
     metadata = parseMetadata(hierarchy)
     if config.getboolean("development", "OutputJson", fallback=False):
         with open(filepath + ".json", "w") as f:

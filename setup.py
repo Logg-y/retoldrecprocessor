@@ -12,7 +12,7 @@ if os.path.isdir("build"):
     shutil.rmtree("build")
 	
 			
-ver = "1.0.0"
+ver = "1.0.1"
 
 build_exe_options = {"include_msvcr":False, "excludes":["distutils", "test"]}
 
